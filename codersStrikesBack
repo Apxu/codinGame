@@ -1,0 +1,198 @@
+var boostCount = 0
+var coordAdjustement = 250
+var previousCoordinates = storeCoordinates(0, 0)
+var previousCheckpointCoordinates = storeCoordinates(0, 0)
+checkpoints = []
+lap = 1
+
+function storeCoordinates(x, y) {
+  return {
+    x: x,
+    y: y,
+  };
+}
+
+function hypotenuse (coord1, coord2) {
+  b = Math.abs(coord1.x - coord2.x)
+  c = Math.abs(coord1.y - coord2.y)
+  return Math.round(Math.sqrt(Math.pow(b, 2) + Math.pow(c, 2)))
+}
+
+function getVector(a, b) {
+  return storeCoordinates((b.x - a.x), (abY = b.y - a.y))
+}
+
+function getVectorAngle (a, b) {
+  return Math.acos(((a.x * b.x) + (a.y * b.y)) / ((Math.sqrt((Math.pow(a.x, 2)) + (Math.pow(a.y, 2)))) * (Math.sqrt((Math.pow(b.x, 2)) + (Math.pow(b.y, 2)))))) * (180 / Math.PI)
+}
+
+function getAngle(a, b) {
+  kAB = (b.y - a.y) / (b.x - a.x)
+  kBC = (0 - b.y) / (0 - b.x)
+  kCA = (a.y - 0) / (a.x - 0)
+  return Math.atan((kAB - Math.abs(kCA)) / 1 + kAB * Math.abs(kCA)) * (180 / Math.PI)
+}
+
+function getDirection (a, b) {
+  o = ''
+  if (a.y > b.y) {
+    o = o + 'Bottom'
+  }
+  else {
+    o = o + 'Top'
+  }
+  o = o + ' '
+  if (a.x > b.x) {
+    o = o + 'Right'
+  }
+  else {
+    o = o + 'Left'
+  }
+  return o
+}
+
+function thrust (angle, speed, dist) {
+  if (angle < 10 && dist > 4500 && boostCount === 0) {
+    boostCount = 1
+    return "BOOST"
+  }
+  else if (dist < 800) {
+    return 10
+  }
+  else if (speed > 500 && dist < 2500) {
+    return 30
+  }
+  else if (speed > 600 && dist < 2500) {
+    return 20
+  }
+  else if (angle < 25) {
+    return 100
+  }
+  else if (angle > 90) {
+    return Math.round(100 - (100 / (180 / angle)))
+  }
+  else {
+    return 100 - ((180 - (160 + angle)) * -1)
+  }
+}
+
+function distanceToOpponent (player, opponent) {
+  distToOp = player - opponent
+  return Math.abs(distToOp)
+}
+
+function saveCheckpoint (prevChkPoint, nextChkPoint) {
+  if (prevChkPoint.x === 0) {
+    checkpoints.push(nextChkPoint)
+  }
+  else if (prevChkPoint.x != nextChkPoint.x && prevChkPoint.y != nextChkPoint.y) {
+    checkpoints.push(nextChkPoint)
+    for (i = 0; i < checkpoints.length; i++) {
+      console.error('Checkpoints #' + i + ': ' + checkpoints[i].x + ' ' +checkpoints[i].y)
+    }
+  }
+}
+
+function lapCount (prevChkPoint, nextChkPoint, lap) {
+  for (i = 0; i < checkpoints.length; i++) {
+
+    console.error('CHECK X: ' + nextChkPoint.x + '?' + checkpoints[i].x)
+    console.error('CHECK Y: ' + nextChkPoint.y + '?' + checkpoints[i].y)
+
+    if (prevChkPoint.x != nextChkPoint.x && prevChkPoint.y != nextChkPoint.y && nextChkPoint.x === checkpoints[i].x && nextChkPoint.y === checkpoints[i].y) {
+      console.error('NEW LAP!')
+      lap++
+    }
+  }
+  return lap
+}
+
+function move (player, nextCheckpoint, opponent, playerDistance, opponentDistance, distanceToOpponent) {
+  coordAdjustement = 200
+  if (playerDistance < opponentDistance) {
+    if (player > nextCheckpoint && opponent < nextCheckpoint) {
+      return nextCheckpoint - coordAdjustement + Math.round(1000 / playerDistance)
+    }
+    else if (player < nextCheckpoint && opponent > nextCheckpoint) {
+      return nextCheckpoint + coordAdjustement
+    }
+    else if (player < nextCheckpoint && opponent < nextCheckpoint && player < opponent) {
+      return nextCheckpoint + coordAdjustement
+    }
+    else if (player < nextCheckpoint && opponent < nextCheckpoint && player > opponent) {
+      return nextCheckpoint - coordAdjustement
+    }
+    else if (player > nextCheckpoint && opponent > nextCheckpoint && player > opponent) {
+      return nextCheckpoint - coordAdjustement
+    }
+    else if (player > nextCheckpoint && opponent > nextCheckpoint && player < opponent) {
+      return nextCheckpoint + coordAdjustement
+    }
+    else {
+      return nextCheckpoint
+    }
+  }
+  else {
+    return nextCheckpoint
+  }
+}
+
+while (true) {
+  var inputs = readline().split(' ');
+  var currentCoordinates = storeCoordinates(parseInt(inputs[0]), parseInt(inputs[1]))
+  var nextCheckpointCoordinates = storeCoordinates(parseInt(inputs[2]), parseInt(inputs[3]))
+  const nextCheckpointDist = parseInt(inputs[4]); // distance to the next checkpoint
+  var nextCheckpointAngle = parseInt(inputs[5]); // angle between your pod orientation and the direction of the next checkpoint
+  var inputs = readline().split(' ');
+  var opponentCoordinates = storeCoordinates (parseInt(inputs[0]), parseInt(inputs[1]))
+
+  if (previousCoordinates.x === 0) {
+    playerSpeed = 0
+  }
+  else {
+    playerSpeed = hypotenuse(currentCoordinates, previousCoordinates)
+  }
+
+  opponentDistance = hypotenuse(opponentCoordinates, nextCheckpointCoordinates)
+  distanceToOpponent = hypotenuse(currentCoordinates, opponentCoordinates)
+
+  expectedMovementVector = getVector(currentCoordinates, nextCheckpointCoordinates)
+  currentMovementVector = getVector(previousCoordinates, currentCoordinates)
+
+  direction = getDirection(currentCoordinates, previousCoordinates)
+  expectedDirection = getDirection(nextCheckpointCoordinates, currentCoordinates)
+  vectorAngle = getVectorAngle(expectedMovementVector, currentMovementVector)
+
+
+
+  console.error('Checkpoint: ' + nextCheckpointCoordinates.x + ' ' + nextCheckpointCoordinates.y)
+  console.error('Direction: ' + direction)
+  console.error('Expected direction: ' + expectedDirection)
+  console.error('Distance: ' + nextCheckpointDist)
+  console.error('Speed: ' + playerSpeed)
+  // console.error('Expected vector: ' + expectedMovementVector.x + ' ' + expectedMovementVector.y)
+  // console.error('Current vector: ' + currentMovementVector.x + ' ' + currentMovementVector.y)
+  // console.error('Vector angle: ' + vectorAngle)
+  // console.error('Angle: ' + nextCheckpointAngle)
+  // console.error("Opponent distance: " + opponentDistance)
+  // console.error("Distance to opponent: " + distanceToOpponent)
+  console.error('Current coords: ' + currentCoordinates.x + ' ' + currentCoordinates.y)
+  console.error('Previous coords: ' + previousCoordinates.x + ' ' + previousCoordinates.y)
+
+  previousCoordinates = storeCoordinates(currentCoordinates.x, currentCoordinates.y)
+  nextCheckpointAngle = Math.abs(nextCheckpointAngle)
+
+  saveCheckpoint(previousCheckpointCoordinates, nextCheckpointCoordinates)
+  lap = lapCount(previousCheckpointCoordinates, nextCheckpointCoordinates, lap)
+
+  console.error('Lap: ' + lap)
+
+  xMove = move(currentCoordinates.x, nextCheckpointCoordinates.x, opponentCoordinates.x, nextCheckpointDist, opponentDistance, distanceToOpponent)
+  yMove = move(currentCoordinates.y, nextCheckpointCoordinates.y, opponentCoordinates.y, nextCheckpointDist, opponentDistance, distanceToOpponent)
+  speed = thrust(nextCheckpointAngle, playerSpeed, nextCheckpointDist)
+
+  console.log(xMove + ' ' + yMove + ' ' + speed);
+
+  previousCheckpointCoordinates = nextCheckpointCoordinates
+
+}
